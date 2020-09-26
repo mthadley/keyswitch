@@ -19,33 +19,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
 
 [[package]]
-name = "evdev-rs"
-version = "0.4.0"
+name = "input-linux"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b92abc30d5fd1e4f6440dee4d626abc68f4a9b5014dc1de575901e23c2e02321"
+checksum = "e95c5622138ee0952c4779a7359c5d0e72befb2b5b708ccc9973e402be11535c"
 dependencies = [
- "bitflags",
- "evdev-sys",
- "libc",
- "log",
+ "input-linux-sys",
+ "nix",
 ]
 
 [[package]]
-name = "evdev-sys"
-version = "0.2.1"
+name = "input-linux-sys"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c6aa4e801c7267f2f66c9efd5c4071ba8ca9d7d9de515bb09a14bbe6f639ed1"
+checksum = "1be85879585a8f9f29bdbeb26974eee317817ec0f937352d3f66e0e4ff719278"
 dependencies = [
- "cc",
  "libc",
- "pkg-config",
+ "nix",
 ]
 
 [[package]]
 name = "keyswitch"
 version = "0.1.0"
 dependencies = [
- "evdev-rs",
+ "input-linux",
+ "libc",
 ]
 
 [[package]]
@@ -55,16 +53,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2f96b10ec2560088a8e76961b00d47107b3a625fecb76dedb29ee7ccbf98235"
 
 [[package]]
-name = "log"
-version = "0.4.11"
+name = "nix"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fabed175da42fed1fa0746b0ea71f412aa9d35e76e95e59b192c64b9dc2bf8b"
+checksum = "83450fe6a6142ddd95fb064b746083fc4ef1705fe81f64a64e1d4b39f54a1055"
 dependencies = [
+ "bitflags",
+ "cc",
  "cfg-if",
+ "libc",
 ]
-
-[[package]]
-name = "pkg-config"
-version = "0.3.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d36492546b6af1463394d46f0c834346f31548646f6ba10849802c9c9a27ac33"
