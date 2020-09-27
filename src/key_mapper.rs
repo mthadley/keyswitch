@@ -2,8 +2,14 @@ use input_linux::{Key, KeyEvent, KeyState};
 use std::{collections::HashSet, vec::Vec};
 
 pub struct KeyMapper {
-    mappings: Vec<(Vec<Key>, (Key, Key))>,
+    mappings: Vec<Mapping>,
     pressed_keys: HashSet<Key>,
+}
+
+struct Mapping {
+    prefixes: Vec<Key>,
+    old: Key,
+    new: Key,
 }
 
 impl KeyMapper {
@@ -18,32 +24,39 @@ impl KeyMapper {
         match keys.split_last() {
             None => Err(Error::EmptyMappingError),
             Some((old, prefixes)) => {
-                self.mappings.push((Vec::from(prefixes), (*old, *new)));
+                self.mappings.push(Mapping {
+                    prefixes: Vec::from(prefixes),
+                    old: *old,
+                    new: *new,
+                });
                 Ok(())
             }
         }
     }
 
     pub fn handle_key_event(&mut self, event: &KeyEvent) -> Vec<(Key, KeyState)> {
-        let mappings = self.mappings.iter().find_map(|(prefixes, (old, new))| {
-            if *old == event.key && self.all_pressed(prefixes) {
-                // Immediately release prefixes so that other clients
-                // don't see the other keys as being held down at the
-                // same time.
-                // TODO: Maybe don't contstantly send RELEASED events for keys
-                // that previoulsy have already been released (at least as far
-                // as the other clients are concerned).
-                let mut mappings = prefixes
-                    .iter()
-                    .map(|key| (*key, KeyState::RELEASED))
-                    .collect::<Vec<_>>();
+        let mappings = self
+            .mappings
+            .iter()
+            .find_map(|Mapping { prefixes, old, new }| {
+                if *old == event.key && self.all_pressed(prefixes) {
+                    // Immediately release prefixes so that other clients
+                    // don't see the other keys as being held down at the
+                    // same time.
+                    // TODO: Maybe don't contstantly send RELEASED events for keys
+                    // that previoulsy have already been released (at least as far
+                    // as the other clients are concerned).
+                    let mut mappings = prefixes
+                        .iter()
+                        .map(|key| (*key, KeyState::RELEASED))
+                        .collect::<Vec<_>>();
 
-                mappings.push((*new, event.value));
-                Some(mappings)
-            } else {
-                None
-            }
-        });
+                    mappings.push((*new, event.value));
+                    Some(mappings)
+                } else {
+                    None
+                }
+            });
 
         match event.value {
             KeyState::PRESSED | KeyState::AUTOREPEAT => {
