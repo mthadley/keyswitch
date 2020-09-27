@@ -59,7 +59,7 @@ impl KeyMapper {
                 .filter(|key| !self.already_released.contains(key))
                 .collect::<Vec<_>>();
 
-            // Ignore relase events later for these keys, as they'll already
+            // Ignore release events later for these keys, as they'll already
             // have been reported.
             for key in keys.iter() {
                 self.already_released.insert(**key);
