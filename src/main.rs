@@ -1,9 +1,9 @@
-use keyswitch::keyswitcher::{self, Keyswitcher};
+use keyswitch::key_switcher::{self, KeySwitcher};
 use std::env;
 
-fn main() -> Result<(), keyswitcher::Error> {
+fn main() -> Result<(), key_switcher::Error> {
     let device_name = env::args().nth(1).expect("Expected device name.");
-    Keyswitcher::new(device_name)?.run()?;
+    KeySwitcher::new(device_name)?.run()?;
 
     Ok(())
 }

@@ -1,2 +1,2 @@
 mod key_mapper;
-pub mod keyswitcher;
+pub mod key_switcher;

@@ -21,13 +21,13 @@ const VENDOR: u16 = 0x3232;
 const VERSION: u16 = 0x1234;
 const PRODUCT: u16 = 0x5678;
 
-pub struct Keyswitcher {
+pub struct KeySwitcher {
     input_device: EvdevHandle<File>,
     output_device: UInputHandle<File>,
     key_mapper: KeyMapper,
 }
 
-impl Keyswitcher {
+impl KeySwitcher {
     pub fn new(input_path: impl AsRef<Path>) -> Result<Self, Error> {
         let input_file = File::open(input_path)?;
         let input_device = EvdevHandle::new(input_file);
