@@ -63,9 +63,7 @@ impl KeySwitcher {
     }
 
     pub fn run(&mut self) -> Result<(), Error> {
-        //  Temporary limit on processed events, just in-case I lock up
-        //  my keyboard while working on this thing.
-        for _ in 0..200 {
+        loop {
             // Initialize empty input_event buffer
             let mut raw_events = [EMPTY_INPUT_EVENT; 24];
 
@@ -76,8 +74,6 @@ impl KeySwitcher {
                 self.handle_event(event)?;
             }
         }
-
-        Ok(())
     }
 
     fn handle_event(&mut self, event: InputEvent) -> Result<(), Error> {
