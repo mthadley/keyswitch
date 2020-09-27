@@ -164,6 +164,43 @@ mod tests {
         );
     }
 
+    #[test]
+    fn it_maps_a_sequence_with_more_than_one_prefix() {
+        let mut mapper = KeyMapper::new();
+        mapper
+            .add_mapping(&[Key::CapsLock, Key::LeftShift, Key::J], &Key::Down)
+            .unwrap();
+
+        assert_eq!(
+            mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::PRESSED)),
+            vec![(Key::CapsLock, KeyState::PRESSED)]
+        );
+        assert_eq!(
+            mapper.handle_key_event(&mock_event(Key::LeftShift, KeyState::PRESSED)),
+            vec![(Key::LeftShift, KeyState::PRESSED)]
+        );
+        assert_eq!(
+            mapper.handle_key_event(&mock_event(Key::J, KeyState::PRESSED)),
+            vec![
+                (Key::CapsLock, KeyState::RELEASED),
+                (Key::LeftShift, KeyState::RELEASED),
+                (Key::Down, KeyState::PRESSED)
+            ]
+        );
+        assert_eq!(
+            mapper.handle_key_event(&mock_event(Key::J, KeyState::RELEASED)),
+            vec![(Key::Down, KeyState::RELEASED)]
+        );
+        assert_eq!(
+            mapper.handle_key_event(&mock_event(Key::LeftShift, KeyState::RELEASED)),
+            vec![]
+        );
+        assert_eq!(
+            mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::RELEASED)),
+            vec![]
+        );
+    }
+
     fn mock_event(key: Key, value: KeyState) -> KeyEvent {
         KeyEvent::new(EventTime::new(0, 0), key, value)
     }
