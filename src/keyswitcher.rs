@@ -73,27 +73,27 @@ impl Keyswitcher {
 
             for raw_event in raw_events.iter().take(len) {
                 let event = InputEvent::from_raw(raw_event)?.to_owned();
-                self.forward_event(event)?;
+                self.handle_event(event)?;
             }
         }
 
         Ok(())
     }
 
-    fn forward_event(&mut self, event: InputEvent) -> Result<(), Error> {
+    fn handle_event(&mut self, event: InputEvent) -> Result<(), Error> {
         if let Ok(Event::Key(key_event)) = Event::new(event) {
-            let mapped_key = self.key_mapper.handle_key_event(&key_event);
+            for (mapped_key, state) in self.key_mapper.handle_key_event(&key_event) {
+                let events: [input_event; 2] = [
+                    InputEvent::from(KeyEvent::new(get_timestamp()?, mapped_key, state))
+                        .as_raw()
+                        .to_owned(),
+                    InputEvent::from(SynchronizeEvent::report(get_timestamp()?))
+                        .as_raw()
+                        .to_owned(),
+                ];
 
-            let events: [input_event; 2] = [
-                InputEvent::from(KeyEvent::new(get_timestamp()?, mapped_key, key_event.value))
-                    .as_raw()
-                    .to_owned(),
-                InputEvent::from(SynchronizeEvent::report(get_timestamp()?))
-                    .as_raw()
-                    .to_owned(),
-            ];
-
-            self.output_device.write(&events)?;
+                self.output_device.write(&events)?;
+            }
         }
 
         Ok(())
