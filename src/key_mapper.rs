@@ -49,9 +49,10 @@ impl KeyMapper {
             KeyState::PRESSED | KeyState::AUTOREPEAT => {
                 self.pressed_keys.insert(event.key);
             }
-            _ => {
+            KeyState::RELEASED => {
                 self.pressed_keys.remove(&event.key);
             }
+            _ => (),
         }
 
         mappings.unwrap_or_else(|| vec![(event.key, event.value)])
