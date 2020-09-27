@@ -6,7 +6,7 @@ pkgs.rustPlatform.buildRustPackage rec {
 
   src = ./.;
 
-  cargoSha256 = "0am5dw8pkspnrd5nvhbs7lz3aazr33cgf0dax5ybd7hr9gbf0bs3";
+  cargoSha256 = "12b5if534ihkgc00m1nfqgaph99p719nj2c2fdjj12svsgd9x1d5";
 
   verifyCargoDeps = true;
 
