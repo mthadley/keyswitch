@@ -1,3 +1,4 @@
+use crate::key_mapper::{self, KeyMapper};
 use input_linux::{
     EvdevHandle, Event, EventKind, EventTime, InputEvent, InputId, Key, KeyEvent, SynchronizeEvent,
     UInputHandle,
@@ -23,6 +24,7 @@ const PRODUCT: u16 = 0x5678;
 pub struct Keyswitcher {
     input_device: EvdevHandle<File>,
     output_device: UInputHandle<File>,
+    key_mapper: KeyMapper,
 }
 
 impl Keyswitcher {
@@ -53,26 +55,19 @@ impl Keyswitcher {
             &[],
         )?;
 
-        Ok(Keyswitcher {
+        Ok(Self {
             input_device,
             output_device,
+            key_mapper: test_key_mapper()?,
         })
     }
 
-    pub fn run(&self) -> Result<(), Error> {
+    pub fn run(&mut self) -> Result<(), Error> {
         //  Temporary limit on processed events, just in-case I lock up
         //  my keyboard while working on this thing.
-        for _ in 0..50 {
+        for _ in 0..200 {
             // Initialize empty input_event buffer
-            let mut raw_events = [input_event {
-                time: timeval {
-                    tv_sec: 0,
-                    tv_usec: 0,
-                },
-                type_: 0,
-                code: 0,
-                value: 0,
-            }; 24];
+            let mut raw_events = [EMPTY_INPUT_EVENT; 24];
 
             let len = self.input_device.read(&mut raw_events)?;
 
@@ -85,17 +80,14 @@ impl Keyswitcher {
         Ok(())
     }
 
-    fn forward_event(&self, event: InputEvent) -> Result<(), Error> {
+    fn forward_event(&mut self, event: InputEvent) -> Result<(), Error> {
         if let Ok(Event::Key(key_event)) = Event::new(event) {
-            // TODO: Add the actual remapping logic here.
+            let mapped_key = self.key_mapper.handle_key_event(&key_event);
+
             let events: [input_event; 2] = [
-                InputEvent::from(KeyEvent::new(
-                    get_timestamp()?,
-                    key_event.key,
-                    key_event.value,
-                ))
-                .as_raw()
-                .to_owned(),
+                InputEvent::from(KeyEvent::new(get_timestamp()?, mapped_key, key_event.value))
+                    .as_raw()
+                    .to_owned(),
                 InputEvent::from(SynchronizeEvent::report(get_timestamp()?))
                     .as_raw()
                     .to_owned(),
@@ -121,11 +113,34 @@ fn get_timestamp() -> Result<EventTime, Error> {
     ))
 }
 
+/// TODO: Replace this with a real configuration system
+fn test_key_mapper() -> Result<KeyMapper, key_mapper::Error> {
+    let mut mapper = KeyMapper::new();
+
+    mapper.add_mapping(&[Key::CapsLock, Key::H], &Key::Left)?;
+    mapper.add_mapping(&[Key::CapsLock, Key::J], &Key::Down)?;
+    mapper.add_mapping(&[Key::CapsLock, Key::K], &Key::Up)?;
+    mapper.add_mapping(&[Key::CapsLock, Key::L], &Key::Right)?;
+
+    Ok(mapper)
+}
+
+const EMPTY_INPUT_EVENT: input_event = input_event {
+    time: timeval {
+        tv_sec: 0,
+        tv_usec: 0,
+    },
+    type_: 0,
+    code: 0,
+    value: 0,
+};
+
 #[derive(Debug)]
 pub enum Error {
     IOError(io::Error),
     InputEventRangeError,
     SystemTimeError,
+    BadMappingError(key_mapper::Error),
 }
 
 impl From<io::Error> for Error {
@@ -143,5 +158,11 @@ impl From<input_linux::RangeError> for Error {
 impl From<SystemTimeError> for Error {
     fn from(_: SystemTimeError) -> Self {
         Error::SystemTimeError
+    }
+}
+
+impl From<key_mapper::Error> for Error {
+    fn from(error: key_mapper::Error) -> Self {
+        Error::BadMappingError(error)
     }
 }
