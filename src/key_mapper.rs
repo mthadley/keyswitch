@@ -42,15 +42,7 @@ impl KeyMapper {
             .iter()
             .find(|Mapping { prefixes, old, .. }| *old == event.key && self.all_pressed(prefixes));
 
-        match event.value {
-            KeyState::PRESSED | KeyState::AUTOREPEAT => {
-                self.pressed_keys.insert(event.key);
-            }
-            KeyState::RELEASED => {
-                self.pressed_keys.remove(&event.key);
-            }
-            _ => (),
-        }
+        update_pressed_keys(&mut self.pressed_keys, event);
 
         let keys_to_report = if let Some(mapping) = matched_mapping {
             let keys = mapping
@@ -85,6 +77,18 @@ impl KeyMapper {
 
     fn all_pressed(&self, prefixes: &[Key]) -> bool {
         prefixes.iter().all(|key| self.pressed_keys.contains(key))
+    }
+}
+
+fn update_pressed_keys(pressed_keys: &mut HashSet<Key>, event: &KeyEvent) {
+    match event.value {
+        KeyState::PRESSED | KeyState::AUTOREPEAT => {
+            pressed_keys.insert(event.key);
+        }
+        KeyState::RELEASED => {
+            pressed_keys.remove(&event.key);
+        }
+        _ => (),
     }
 }
 
