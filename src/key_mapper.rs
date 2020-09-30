@@ -228,6 +228,34 @@ mod tests {
         );
     }
 
+    #[test]
+    fn it_maps_key_on_release_even_if_prefix_released() {
+        let mut mapper = KeyMapper::new();
+        mapper
+            .add_mapping(&[Key::CapsLock, Key::J], &Key::Down)
+            .unwrap();
+
+        assert_eq!(
+            mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::PRESSED)),
+            vec![(Key::CapsLock, KeyState::PRESSED)]
+        );
+        assert_eq!(
+            mapper.handle_key_event(&mock_event(Key::J, KeyState::PRESSED)),
+            vec![
+                (Key::CapsLock, KeyState::RELEASED),
+                (Key::Down, KeyState::PRESSED)
+            ]
+        );
+        assert_eq!(
+            mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::RELEASED)),
+            vec![(Key::CapsLock, KeyState::PRESSED)]
+        );
+        assert_eq!(
+            mapper.handle_key_event(&mock_event(Key::J, KeyState::RELEASED)),
+            vec![(Key::Down, KeyState::RELEASED)]
+        );
+    }
+
     fn mock_event(key: Key, value: KeyState) -> KeyEvent {
         KeyEvent::new(EventTime::new(0, 0), key, value)
     }
