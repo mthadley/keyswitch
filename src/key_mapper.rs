@@ -56,7 +56,7 @@ impl KeyMapper {
 
         update_pressed_keys(&mut self.pressed_keys, event);
 
-        let keys_to_report = if let Some(mapping) = matched_mapping {
+        if let Some(mapping) = matched_mapping {
             match event.value {
                 KeyState::PRESSED | KeyState::AUTOREPEAT => {
                     self.mapped_keys.insert(event.key, mapping.new);
@@ -102,9 +102,7 @@ impl KeyMapper {
             vec![]
         } else {
             vec![(event.key, event.value)]
-        };
-
-        keys_to_report
+        }
     }
 
     fn all_pressed(&self, prefixes: &[Key]) -> bool {
