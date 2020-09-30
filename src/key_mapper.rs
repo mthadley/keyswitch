@@ -1,10 +1,21 @@
 use input_linux::{Key, KeyEvent, KeyState};
-use std::{collections::HashSet, vec::Vec};
+use std::{
+    collections::{HashMap, HashSet},
+    vec::Vec,
+};
 
 pub struct KeyMapper {
     mappings: Vec<Mapping>,
     pressed_keys: HashSet<Key>,
+
+    /// Keys that were already released to isolate a mapping.
+    /// TODO: This needs to know about ordering, so that they are released in
+    /// reverse order. Plus, it'll make the tests pass deterministically.
     already_released: HashSet<Key>,
+
+    /// Keys that were previously mapped, which we'll need to be able to identify
+    /// again if their prefixes are no longer held.
+    mapped_keys: HashMap<Key, Key>,
 }
 
 struct Mapping {
@@ -19,6 +30,7 @@ impl KeyMapper {
             mappings: Vec::new(),
             pressed_keys: HashSet::new(),
             already_released: HashSet::new(),
+            mapped_keys: HashMap::new(),
         }
     }
 
@@ -47,6 +59,8 @@ impl KeyMapper {
         let keys_to_report = if let Some(mapping) = matched_mapping {
             match event.value {
                 KeyState::PRESSED | KeyState::AUTOREPEAT => {
+                    self.mapped_keys.insert(event.key, mapping.new);
+
                     let keys = mapping
                         .prefixes
                         .iter()
@@ -81,6 +95,8 @@ impl KeyMapper {
                 }
                 _ => vec![(event.key, event.value)],
             }
+        } else if let Some((_old, new)) = self.mapped_keys.remove_entry(&event.key) {
+            vec![(new, event.value)]
         } else if self.already_released.contains(&event.key) {
             self.already_released.remove(&event.key);
             vec![]
@@ -248,7 +264,7 @@ mod tests {
         );
         assert_eq!(
             mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::RELEASED)),
-            vec![(Key::CapsLock, KeyState::PRESSED)]
+            vec![]
         );
         assert_eq!(
             mapper.handle_key_event(&mock_event(Key::J, KeyState::RELEASED)),
