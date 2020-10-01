@@ -48,56 +48,52 @@ impl KeyMapper {
     }
 
     pub fn handle_key_event(&mut self, event: &KeyEvent) -> Vec<(Key, KeyState)> {
-        let matched_mapping = self
-            .mappings
-            .iter()
-            .find(|Mapping { prefixes, old, .. }| *old == event.key && self.all_pressed(prefixes));
+        let matched_mapping = match event.value {
+            KeyState::PRESSED | KeyState::AUTOREPEAT => {
+                self.mappings.iter().find(|Mapping { prefixes, old, .. }| {
+                    *old == event.key && self.all_pressed(prefixes)
+                })
+            }
+            _ => None,
+        };
 
         update_pressed_keys(&mut self.pressed_keys, event);
 
         if let Some(mapping) = matched_mapping {
-            match event.value {
-                KeyState::PRESSED | KeyState::AUTOREPEAT => {
-                    self.mapped_keys.insert(event.key, mapping.new);
+            self.mapped_keys.insert(event.key, mapping.new);
 
-                    let keys = mapping
-                        .prefixes
-                        .iter()
-                        .filter(|key| !self.already_released.contains(key))
-                        .collect::<Vec<_>>();
+            let keys = mapping
+                .prefixes
+                .iter()
+                .filter(|key| !self.already_released.contains(key))
+                .collect::<Vec<_>>();
 
-                    // Ignore release events later for these keys, as they'll already
-                    // have been reported.
-                    for key in keys.iter() {
-                        self.already_released.insert(**key);
-                    }
-
-                    // Release prefixes so other clients don't see them as being pressed
-                    // at the same time as the mapped key.
-                    let mut final_keys = keys
-                        .into_iter()
-                        .map(|key| (*key, KeyState::RELEASED))
-                        .collect::<Vec<_>>();
-                    final_keys.push((mapping.new, event.value));
-                    final_keys
-                }
-                KeyState::RELEASED => {
-                    self.mapped_keys.remove_entry(&event.key);
-
-                    // First, release the mapped key.
-                    let mut final_keys = vec![(mapping.new, event.value)];
-
-                    // Then, re-press any prefixes that are still being held down.
-                    while let Some(key) = self.already_released.pop_back() {
-                        final_keys.push((key, KeyState::PRESSED));
-                    }
-
-                    final_keys
-                }
-                _ => vec![(event.key, event.value)],
+            // Ignore release events later for these keys, as they'll already
+            // have been reported.
+            for key in keys.iter() {
+                self.already_released.insert(**key);
             }
+
+            // Release prefixes so other clients don't see them as being pressed
+            // at the same time as the mapped key.
+            let mut final_keys = keys
+                .into_iter()
+                .map(|key| (*key, KeyState::RELEASED))
+                .collect::<Vec<_>>();
+            final_keys.push((mapping.new, event.value));
+            final_keys
         } else if let Some((_old, new)) = self.mapped_keys.remove_entry(&event.key) {
-            vec![(new, event.value)]
+            self.mapped_keys.remove_entry(&event.key);
+
+            // First, release the mapped key.
+            let mut final_keys = vec![(new, event.value)];
+
+            // Then, re-press any prefixes that are still being held down.
+            while let Some(key) = self.already_released.pop_back() {
+                final_keys.push((key, KeyState::PRESSED));
+            }
+
+            final_keys
         } else if self.already_released.contains(&event.key) {
             self.already_released.remove(&event.key);
             vec![]
@@ -268,6 +264,31 @@ mod tests {
         assert_eq!(
             mapper.handle_key_event(&mock_event(Key::J, KeyState::RELEASED)),
             vec![(Key::Down, KeyState::RELEASED)]
+        );
+    }
+
+    #[test]
+    fn it_handles_prefixe_pressed_after_mapped_key() {
+        let mut mapper = KeyMapper::new();
+        mapper
+            .add_mapping(&[Key::CapsLock, Key::J], &Key::Down)
+            .unwrap();
+
+        assert_eq!(
+            mapper.handle_key_event(&mock_event(Key::J, KeyState::PRESSED)),
+            vec![(Key::J, KeyState::PRESSED)]
+        );
+        assert_eq!(
+            mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::PRESSED)),
+            vec![(Key::CapsLock, KeyState::PRESSED)]
+        );
+        assert_eq!(
+            mapper.handle_key_event(&mock_event(Key::J, KeyState::RELEASED)),
+            vec![(Key::J, KeyState::RELEASED)]
+        );
+        assert_eq!(
+            mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::RELEASED)),
+            vec![(Key::CapsLock, KeyState::RELEASED)]
         );
     }
 
