@@ -1,4 +1,5 @@
 use input_linux::{Key, KeyEvent, KeyState};
+use linked_hash_set::LinkedHashSet;
 use std::{
     collections::{HashMap, HashSet},
     vec::Vec,
@@ -9,9 +10,7 @@ pub struct KeyMapper {
     pressed_keys: HashSet<Key>,
 
     /// Keys that were already released to isolate a mapping.
-    /// TODO: This needs to know about ordering, so that they are released in
-    /// reverse order. Plus, it'll make the tests pass deterministically.
-    already_released: HashSet<Key>,
+    already_released: LinkedHashSet<Key>,
 
     /// Keys that were previously mapped, which we'll need to be able to identify
     /// again if their prefixes are no longer held.
@@ -29,7 +28,7 @@ impl KeyMapper {
         Self {
             mappings: Vec::new(),
             pressed_keys: HashSet::new(),
-            already_released: HashSet::new(),
+            already_released: LinkedHashSet::new(),
             mapped_keys: HashMap::new(),
         }
     }
@@ -87,7 +86,7 @@ impl KeyMapper {
                     let mut final_keys = vec![(mapping.new, event.value)];
 
                     // Then, re-press any prefixes that are still being held down.
-                    for key in self.already_released.drain() {
+                    while let Some(key) = self.already_released.pop_back() {
                         final_keys.push((key, KeyState::PRESSED));
                     }
 
