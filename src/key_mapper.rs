@@ -82,6 +82,8 @@ impl KeyMapper {
                     final_keys
                 }
                 KeyState::RELEASED => {
+                    self.mapped_keys.remove_entry(&event.key);
+
                     // First, release the mapped key.
                     let mut final_keys = vec![(mapping.new, event.value)];
 
