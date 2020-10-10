@@ -8,8 +8,8 @@ use std::{
 };
 
 pub struct Device {
-    handle: EvdevHandle<File>,
     dev_path: PathBuf,
+    name: String,
 }
 
 impl Device {
@@ -32,20 +32,36 @@ impl Device {
     pub fn print_list() -> Result<(), Error> {
         println!("Available devices: \n");
 
-        for Device { handle, dev_path } in Self::list()? {
-            let name_bytes = handle.device_name()?;
-            let name = str::from_utf8(&name_bytes)?;
+        let devices = Self::list()?;
+        let dev_path_width = devices
+            .iter()
+            .map(|d| d.dev_path.to_str().unwrap_or("").len())
+            .max()
+            .unwrap_or(0);
+
+        for Device { dev_path, name, .. } in devices {
             let path = dev_path.to_str().unwrap_or("");
-            println!("{:19} {}", path, name);
+            println!(
+                "{path:dev_path_width$}  {name}",
+                path = path,
+                dev_path_width = dev_path_width,
+                name = name
+            );
         }
 
         Ok(())
     }
 
-    pub fn open(dev_path: PathBuf) -> Result<Self, io::Error> {
-        File::open(&dev_path).map(|file| Device {
-            handle: EvdevHandle::new(file),
+    pub fn open(dev_path: PathBuf) -> Result<Self, Error> {
+        let file = File::open(&dev_path)?;
+        let handle = EvdevHandle::new(file);
+
+        let name_bytes = handle.device_name()?;
+        let name = str::from_utf8(&name_bytes)?;
+
+        Ok(Device {
             dev_path: dev_path,
+            name: String::from(name),
         })
     }
 }
