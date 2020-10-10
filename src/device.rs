@@ -8,12 +8,12 @@ use std::{
 };
 
 pub struct Device {
-    dev_path: PathBuf,
-    name: String,
+    pub dev_path: PathBuf,
+    pub name: String,
 }
 
 impl Device {
-    pub fn available() -> Result<impl Iterator<Item = Device>, io::Error> {
+    pub fn available() -> Result<impl Iterator<Item = Device>, Error> {
         Ok(fs::read_dir("/dev/input")?
             .filter_map(|res| res.ok())
             .filter(|entry| {
@@ -54,7 +54,7 @@ impl Device {
         let handle = EvdevHandle::new(file);
 
         let name_bytes = handle.device_name()?;
-        let name = str::from_utf8(&name_bytes)?;
+        let name = str::from_utf8(&name_bytes)?.trim_end_matches('\u{0}');
 
         Ok(Device {
             dev_path: dev_path,

@@ -28,7 +28,7 @@ pub struct KeySwitcher {
 }
 
 impl KeySwitcher {
-    pub fn new(input_path: impl AsRef<Path>) -> Result<Self, Error> {
+    pub fn open(input_path: impl AsRef<Path>) -> Result<Self, Error> {
         let input_file = File::open(input_path)?;
         let input_device = EvdevHandle::new(input_file);
         input_device.grab(true)?;
