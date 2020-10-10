@@ -13,7 +13,7 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn list() -> Result<Vec<Device>, Error> {
+    pub fn list() -> Result<Vec<Device>, io::Error> {
         let devices = fs::read_dir("/dev/input")?
             .filter_map(|res| res.ok())
             .filter(|entry| {
