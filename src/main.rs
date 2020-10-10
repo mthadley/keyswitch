@@ -5,20 +5,33 @@ use keyswitch::{
 };
 use std::process;
 
-fn main() -> Result<(), Error> {
-    match get_mode_from_args() {
-        Some(Mode::ListDevices) => {
-            Device::print_list()?;
-        }
-        Some(Mode::ReadDevice(path)) => {
-            KeySwitcher::new(path)?.run()?;
-        }
-        None => {
+fn main() {
+    let result = match get_mode_from_args() {
+        Some(Mode::ListDevices) => Device::print_list().map_err(|e| e.into()),
+        Some(Mode::ReadDevice(path)) => KeySwitcher::new(path)
+            .and_then(|mut s| s.run())
+            .map_err(|e| e.into()),
+        None => process::exit(1),
+    };
+
+    match result {
+        Err(Error::DeviceListingError(_)) => {
+            println!("Ran into an error when attempting to list devices.");
             process::exit(1);
         }
-    }
+        Err(Error::KeySwitcherError(err)) => {
+            let message = match err {
+                key_switcher::Error::BadMappingError(_) => {
+                    "Encountered a bad key mapping. Check your configuration."
+                }
+                _ => "Encountered an unexpected error when mapping a key.",
+            };
 
-    Ok(())
+            println!("{}", message);
+            process::exit(1);
+        }
+        Ok(()) => (),
+    }
 }
 
 enum Mode {
