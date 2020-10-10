@@ -6,15 +6,13 @@ use keyswitch::{
 use std::process;
 
 fn main() {
-    let result = match get_mode_from_args() {
+    match match get_mode_from_args() {
         Some(Mode::ListDevices) => Device::print_list().map_err(|e| e.into()),
         Some(Mode::ReadDevice(path)) => KeySwitcher::new(path)
             .and_then(|mut s| s.run())
             .map_err(|e| e.into()),
         None => process::exit(1),
-    };
-
-    match result {
+    } {
         Err(Error::DeviceListingError(_)) => {
             println!("Ran into an error when attempting to list devices.");
             process::exit(1);
