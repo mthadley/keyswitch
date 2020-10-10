@@ -2,9 +2,9 @@ use input_linux::EvdevHandle;
 use std::{
     fs::{self, File},
     io,
+    iter::Iterator,
     path::PathBuf,
     str,
-    vec::Vec,
 };
 
 pub struct Device {
@@ -13,8 +13,8 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn list() -> Result<Vec<Device>, io::Error> {
-        let devices = fs::read_dir("/dev/input")?
+    pub fn available() -> Result<impl Iterator<Item = Device>, io::Error> {
+        Ok(fs::read_dir("/dev/input")?
             .filter_map(|res| res.ok())
             .filter(|entry| {
                 entry
@@ -23,16 +23,13 @@ impl Device {
                     .map(|s| s.contains("event"))
                     .unwrap_or(false)
             })
-            .filter_map(|entry| Self::open(entry.path()).ok())
-            .collect();
-
-        Ok(devices)
+            .filter_map(|entry| Self::open(entry.path()).ok()))
     }
 
-    pub fn print_list() -> Result<(), Error> {
+    pub fn print_available() -> Result<(), Error> {
         println!("Available devices: \n");
 
-        let devices = Self::list()?;
+        let devices = Self::available()?.collect::<Vec<_>>();
         let dev_path_width = devices
             .iter()
             .map(|d| d.dev_path.to_str().unwrap_or("").len())

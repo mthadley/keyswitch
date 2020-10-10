@@ -7,7 +7,7 @@ use std::process;
 
 fn main() {
     match match get_mode_from_args() {
-        Some(Mode::ListDevices) => Device::print_list().map_err(|e| e.into()),
+        Some(Mode::ListDevices) => Device::print_available().map_err(|e| e.into()),
         Some(Mode::ReadDevice(path)) => KeySwitcher::new(path)
             .and_then(|mut s| s.run())
             .map_err(|e| e.into()),
