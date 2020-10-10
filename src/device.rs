@@ -23,16 +23,7 @@ impl Device {
                     .map(|s| s.contains("event"))
                     .unwrap_or(false)
             })
-            .filter_map(|entry| {
-                let path = entry.path();
-
-                File::open(&path)
-                    .map(|file| Device {
-                        handle: EvdevHandle::new(file),
-                        dev_path: path,
-                    })
-                    .ok()
-            })
+            .filter_map(|entry| Self::open(entry.path()).ok())
             .collect();
 
         Ok(devices)
@@ -49,6 +40,13 @@ impl Device {
         }
 
         Ok(())
+    }
+
+    pub fn open(dev_path: PathBuf) -> Result<Self, io::Error> {
+        File::open(&dev_path).map(|file| Device {
+            handle: EvdevHandle::new(file),
+            dev_path: dev_path,
+        })
     }
 }
 
