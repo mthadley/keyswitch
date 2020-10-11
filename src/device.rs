@@ -1,4 +1,4 @@
-use input_linux::EvdevHandle;
+use input_linux::{EvdevHandle, EventKind};
 use std::{
     fs::{self, File},
     io,
@@ -53,6 +53,10 @@ impl Device {
         let file = File::open(&dev_path)?;
         let handle = EvdevHandle::new(file);
 
+        if !handle.event_bits()?.get(EventKind::Key) {
+            return Err(Error::UnsupportedDeviceError(dev_path));
+        }
+
         let name_bytes = handle.device_name()?;
         let name = str::from_utf8(&name_bytes)?.trim_end_matches('\u{0}');
 
@@ -67,6 +71,7 @@ impl Device {
 pub enum Error {
     IOError(io::Error),
     Utf8Error(str::Utf8Error),
+    UnsupportedDeviceError(PathBuf),
 }
 
 impl From<io::Error> for Error {

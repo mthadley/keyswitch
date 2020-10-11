@@ -31,6 +31,10 @@ fn main() {
         }
         None => process::exit(1),
     } {
+        Err(Error::DeviceListingError(device::Error::UnsupportedDeviceError(path))) => {
+            println!("Device does not send key events: {:?}", path);
+            process::exit(1);
+        }
         Err(Error::DeviceListingError(_)) => {
             println!("Ran into an error when attempting to list devices.");
             process::exit(1);
