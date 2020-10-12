@@ -8,11 +8,10 @@ use input_linux::{
 };
 use libc::{input_event, timeval};
 use std::{
-    convert::{AsRef, From, TryInto},
+    convert::{From, TryInto},
     fmt::Debug,
     fs::{self, File},
     io,
-    path::Path,
     time::{SystemTime, SystemTimeError},
 };
 
