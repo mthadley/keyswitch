@@ -1,4 +1,7 @@
-use crate::key_mapper::{self, KeyMapper};
+use crate::{
+    device,
+    key_mapper::{self, KeyMapper},
+};
 use input_linux::{
     EvdevHandle, Event, EventKind, EventTime, InputEvent, InputId, Key, KeyEvent, SynchronizeEvent,
     UInputHandle,
@@ -28,9 +31,8 @@ pub struct KeySwitcher {
 }
 
 impl KeySwitcher {
-    pub fn open(input_path: impl AsRef<Path>) -> Result<Self, Error> {
-        let input_file = File::open(input_path)?;
-        let input_device = EvdevHandle::new(input_file);
+    pub fn new(device: device::Device) -> Result<Self, Error> {
+        let input_device = device.handle;
         input_device.grab(true)?;
 
         let uinput = fs::OpenOptions::new().write(true).open("/dev/uinput")?;

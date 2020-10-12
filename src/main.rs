@@ -3,34 +3,47 @@ use keyswitch::{
     device::{self, Device},
     key_switcher::{self, KeySwitcher},
 };
-use std::{path::PathBuf, process};
+use std::{io, path::PathBuf, process};
 
 fn main() {
     match match get_mode_from_args() {
         Some(Mode::ListDevices) => Device::print_available().map_err(Error::from),
         Some(Mode::ReadDevice(id)) => {
-            let device_path = match id {
-                DeviceId::ByPath(path) => Ok(PathBuf::from(path)),
+            let device_result = match id {
+                DeviceId::ByPath(path) => Device::open(PathBuf::from(&path))
+                    .map_err(|err| Error::DeviceOpenError(path, err)),
                 DeviceId::ByName(name) => {
                     Device::available()
                         .map_err(Error::from)
                         .and_then(|mut devices| {
                             devices
                                 .find(|d| d.name == name)
-                                .map(|d| d.dev_path)
                                 .ok_or(Error::NoDeviceFoundError(name))
                         })
                 }
             };
 
-            device_path.and_then(|path| {
-                KeySwitcher::open(path)
+            device_result.and_then(|device| {
+                KeySwitcher::new(device)
                     .and_then(|mut s| s.run())
                     .map_err(Error::from)
             })
         }
         None => process::exit(1),
     } {
+        Err(Error::DeviceOpenError(path, error)) => {
+            let reason = match error {
+                device::Error::UnsupportedDeviceError(_) => "Device does not send key events.",
+                device::Error::Utf8Error(_) => "The path is weird.",
+                device::Error::IOError(io_error) => match io_error.kind() {
+                    io::ErrorKind::PermissionDenied => "Permission denied. Try running with sudo.",
+                    _ => "Unknown io error.",
+                },
+            };
+
+            println!("Unable to open device: {}\n{}", path, reason);
+            process::exit(1);
+        }
         Err(Error::DeviceListingError(device::Error::UnsupportedDeviceError(path))) => {
             println!("Device does not send key events: {:?}", path);
             process::exit(1);
@@ -111,8 +124,9 @@ fn get_mode_from_args() -> Option<Mode> {
 #[derive(Debug)]
 enum Error {
     DeviceListingError(device::Error),
-    KeySwitcherError(key_switcher::Error),
+    DeviceOpenError(String, device::Error),
     NoDeviceFoundError(String),
+    KeySwitcherError(key_switcher::Error),
 }
 
 impl From<device::Error> for Error {

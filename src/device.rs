@@ -8,6 +8,7 @@ use std::{
 };
 
 pub struct Device {
+    pub handle: EvdevHandle<File>,
     pub dev_path: PathBuf,
     pub name: String,
 }
@@ -61,6 +62,7 @@ impl Device {
         let name = str::from_utf8(&name_bytes)?.trim_end_matches('\u{0}');
 
         Ok(Device {
+            handle,
             dev_path: dev_path,
             name: String::from(name),
         })
