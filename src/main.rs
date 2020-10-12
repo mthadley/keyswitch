@@ -6,9 +6,24 @@ use keyswitch::{
 use std::{io, path::PathBuf, process};
 
 fn main() {
-    match match get_mode_from_args() {
-        Some(Mode::ListDevices) => Device::print_available().map_err(Error::from),
-        Some(Mode::ReadDevice(id)) => {
+    let mode = get_mode_from_args().unwrap_or_else(|| {
+        println!("Bad arguments.");
+        process::exit(1)
+    });
+
+    match run(mode) {
+        Ok(()) => (),
+        Err(error) => {
+            eprintln!("{}", format_error(error));
+            process::exit(1)
+        }
+    }
+}
+
+fn run(mode: Mode) -> Result<(), Error> {
+    match mode {
+        Mode::ListDevices => Device::print_available().map_err(Error::from),
+        Mode::ReadDevice(id) => {
             let device_result = match id {
                 DeviceId::ByPath(path) => Device::open(PathBuf::from(&path))
                     .map_err(|err| Error::DeviceOpenError(path, err)),
@@ -29,9 +44,12 @@ fn main() {
                     .map_err(Error::from)
             })
         }
-        None => process::exit(1),
-    } {
-        Err(Error::DeviceOpenError(path, error)) => {
+    }
+}
+
+fn format_error(error: Error) -> String {
+    match error {
+        Error::DeviceOpenError(path, error) => {
             let reason = match error {
                 device::Error::UnsupportedDeviceError(_) => "Device does not send key events.",
                 device::Error::Utf8Error(_) => "The path is weird.",
@@ -41,22 +59,16 @@ fn main() {
                 },
             };
 
-            println!("Unable to open device: {}\n{}", path, reason);
-            process::exit(1);
+            format!("Unable to open device: {}\n{}", path, reason)
         }
-        Err(Error::DeviceListingError(device::Error::UnsupportedDeviceError(path))) => {
-            println!("Device does not send key events: {:?}", path);
-            process::exit(1);
+        Error::DeviceListingError(device::Error::UnsupportedDeviceError(path)) => {
+            format!("Device does not send key events: {:?}", path)
         }
-        Err(Error::DeviceListingError(_)) => {
-            println!("Ran into an error when attempting to list devices.");
-            process::exit(1);
+        Error::DeviceListingError(_) => {
+            format!("Ran into an error when attempting to list devices.")
         }
-        Err(Error::NoDeviceFoundError(name)) => {
-            println!("Device with name not found: {}", name);
-            process::exit(1);
-        }
-        Err(Error::KeySwitcherError(err)) => {
+        Error::NoDeviceFoundError(name) => format!("Device with name not found: {}", name),
+        Error::KeySwitcherError(err) => {
             let message = match err {
                 key_switcher::Error::BadMappingError(_) => {
                     "Encountered a bad key mapping. Check your configuration."
@@ -64,10 +76,8 @@ fn main() {
                 _ => "Encountered an unexpected error when mapping a key.",
             };
 
-            println!("{}", message);
-            process::exit(1);
+            format!("{}", message)
         }
-        Ok(()) => (),
     }
 }
 
