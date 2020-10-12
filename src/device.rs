@@ -8,9 +8,9 @@ use std::{
 };
 
 pub struct Device {
-    pub handle: EvdevHandle<File>,
-    pub dev_path: PathBuf,
-    pub name: String,
+    handle: EvdevHandle<File>,
+    dev_path: PathBuf,
+    name: String,
 }
 
 impl Device {
@@ -66,6 +66,16 @@ impl Device {
             dev_path: dev_path,
             name: String::from(name),
         })
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl From<Device> for EvdevHandle<File> {
+    fn from(device: Device) -> Self {
+        device.handle
     }
 }
 

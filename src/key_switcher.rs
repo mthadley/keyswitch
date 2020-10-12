@@ -31,7 +31,7 @@ pub struct KeySwitcher {
 
 impl KeySwitcher {
     pub fn new(device: device::Device) -> Result<Self, Error> {
-        let input_device = device.handle;
+        let input_device = EvdevHandle::from(device);
         input_device.grab(true)?;
 
         let uinput = fs::OpenOptions::new().write(true).open("/dev/uinput")?;

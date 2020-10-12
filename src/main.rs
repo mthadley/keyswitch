@@ -32,7 +32,7 @@ fn run(mode: Mode) -> Result<(), Error> {
                         .map_err(Error::from)
                         .and_then(|mut devices| {
                             devices
-                                .find(|d| d.name == name)
+                                .find(|d| d.name() == name)
                                 .ok_or(Error::NoDeviceFoundError(name))
                         })
                 }
