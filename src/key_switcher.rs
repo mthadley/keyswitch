@@ -114,6 +114,7 @@ fn get_timestamp() -> Result<EventTime, Error> {
 fn test_key_mapper() -> Result<KeyMapper, key_mapper::Error> {
     let mut mapper = KeyMapper::new();
 
+    mapper.add_mapping(&[Key::CapsLock], &Key::LeftCtrl)?;
     mapper.add_mapping(&[Key::CapsLock, Key::H], &Key::Left)?;
     mapper.add_mapping(&[Key::CapsLock, Key::J], &Key::Down)?;
     mapper.add_mapping(&[Key::CapsLock, Key::K], &Key::Up)?;
