@@ -268,7 +268,7 @@ mod tests {
     }
 
     #[test]
-    fn it_handles_prefixe_pressed_after_mapped_key() {
+    fn it_handles_prefixes_pressed_after_mapped_key() {
         let mut mapper = KeyMapper::new();
         mapper
             .add_mapping(&[Key::CapsLock, Key::J], &Key::Down)
