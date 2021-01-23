@@ -1,4 +1,4 @@
-use input_linux::{Key, KeyEvent, KeyState};
+use input_linux::{EventTime, Key, KeyEvent, KeyState};
 use linked_hash_set::LinkedHashSet;
 use std::{
     collections::{HashMap, HashSet},
@@ -42,6 +42,8 @@ impl KeyMapper {
                     old: *old,
                     new: *new,
                 });
+                self.mappings.sort_by_key(|mapping| mapping.prefixes.len());
+
                 Ok(())
             }
         }
@@ -74,12 +76,22 @@ impl KeyMapper {
                 self.already_released.insert(**key);
             }
 
+            let mut final_keys = vec![];
+
             // Release prefixes so other clients don't see them as being pressed
             // at the same time as the mapped key.
-            let mut final_keys = keys
-                .into_iter()
-                .map(|key| (*key, KeyState::RELEASED))
-                .collect::<Vec<_>>();
+            for key in keys {
+                final_keys.push((
+                    // If one of the keys was already being mapped, we release
+                    // the key it was mapped to, instead of the key itself.
+                    self.mapped_keys
+                        .remove_entry(key)
+                        .map(|(_old, new)| new)
+                        .unwrap_or(*key),
+                    KeyState::RELEASED,
+                ))
+            }
+
             final_keys.push((mapping.new, event.value));
             final_keys
         } else if let Some((_old, new)) = self.mapped_keys.remove_entry(&event.key) {
@@ -90,7 +102,10 @@ impl KeyMapper {
 
             // Then, re-press any prefixes that are still being held down.
             while let Some(key) = self.already_released.pop_back() {
-                final_keys.push((key, KeyState::PRESSED));
+                // Each prefix might have it's own mapping, so we recursively call
+                // handle_key_event and append everything.
+                final_keys
+                    .append(&mut self.handle_key_event(&synthetic_event(key, KeyState::PRESSED)));
             }
 
             final_keys
@@ -119,6 +134,10 @@ fn update_pressed_keys(pressed_keys: &mut HashSet<Key>, event: &KeyEvent) {
     }
 }
 
+fn synthetic_event(key: Key, value: KeyState) -> KeyEvent {
+    KeyEvent::new(EventTime::new(0, 0), key, value)
+}
+
 #[derive(Debug)]
 pub enum Error {
     EmptyMappingError,
@@ -126,15 +145,15 @@ pub enum Error {
 
 #[cfg(test)]
 mod tests {
-    use super::KeyMapper;
-    use input_linux::{EventTime, Key, KeyEvent, KeyState};
+    use super::{synthetic_event, KeyMapper};
+    use input_linux::{Key, KeyState};
 
     #[test]
     fn it_returns_same_key_if_no_mappings() {
         let mut mapper = KeyMapper::new();
 
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::J, KeyState::PRESSED)),
+            mapper.handle_key_event(&synthetic_event(Key::J, KeyState::PRESSED)),
             vec![(Key::J, KeyState::PRESSED)]
         );
     }
@@ -145,7 +164,7 @@ mod tests {
         mapper.add_mapping(&[Key::CapsLock], &Key::J).unwrap();
 
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::J, KeyState::PRESSED)),
+            mapper.handle_key_event(&synthetic_event(Key::J, KeyState::PRESSED)),
             vec![(Key::J, KeyState::PRESSED)]
         );
     }
@@ -158,11 +177,11 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::PRESSED)),
+            mapper.handle_key_event(&synthetic_event(Key::CapsLock, KeyState::PRESSED)),
             vec![(Key::LeftCtrl, KeyState::PRESSED)]
         );
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::LeftCtrl, KeyState::RELEASED)),
+            mapper.handle_key_event(&synthetic_event(Key::LeftCtrl, KeyState::RELEASED)),
             vec![(Key::LeftCtrl, KeyState::RELEASED)]
         );
     }
@@ -175,25 +194,25 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::PRESSED)),
+            mapper.handle_key_event(&synthetic_event(Key::CapsLock, KeyState::PRESSED)),
             vec![(Key::CapsLock, KeyState::PRESSED)]
         );
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::J, KeyState::PRESSED)),
+            mapper.handle_key_event(&synthetic_event(Key::J, KeyState::PRESSED)),
             vec![
                 (Key::CapsLock, KeyState::RELEASED),
                 (Key::Down, KeyState::PRESSED)
             ]
         );
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::J, KeyState::RELEASED)),
+            mapper.handle_key_event(&synthetic_event(Key::J, KeyState::RELEASED)),
             vec![
                 (Key::Down, KeyState::RELEASED),
                 (Key::CapsLock, KeyState::PRESSED)
             ]
         );
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::RELEASED)),
+            mapper.handle_key_event(&synthetic_event(Key::CapsLock, KeyState::RELEASED)),
             vec![(Key::CapsLock, KeyState::RELEASED)]
         );
     }
@@ -206,15 +225,15 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::PRESSED)),
+            mapper.handle_key_event(&synthetic_event(Key::CapsLock, KeyState::PRESSED)),
             vec![(Key::CapsLock, KeyState::PRESSED)]
         );
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::LeftShift, KeyState::PRESSED)),
+            mapper.handle_key_event(&synthetic_event(Key::LeftShift, KeyState::PRESSED)),
             vec![(Key::LeftShift, KeyState::PRESSED)]
         );
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::J, KeyState::PRESSED)),
+            mapper.handle_key_event(&synthetic_event(Key::J, KeyState::PRESSED)),
             vec![
                 (Key::CapsLock, KeyState::RELEASED),
                 (Key::LeftShift, KeyState::RELEASED),
@@ -222,7 +241,7 @@ mod tests {
             ]
         );
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::J, KeyState::RELEASED)),
+            mapper.handle_key_event(&synthetic_event(Key::J, KeyState::RELEASED)),
             vec![
                 (Key::Down, KeyState::RELEASED),
                 (Key::LeftShift, KeyState::PRESSED),
@@ -230,11 +249,11 @@ mod tests {
             ]
         );
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::LeftShift, KeyState::RELEASED)),
+            mapper.handle_key_event(&synthetic_event(Key::LeftShift, KeyState::RELEASED)),
             vec![(Key::LeftShift, KeyState::RELEASED)]
         );
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::RELEASED)),
+            mapper.handle_key_event(&synthetic_event(Key::CapsLock, KeyState::RELEASED)),
             vec![(Key::CapsLock, KeyState::RELEASED)]
         );
     }
@@ -247,22 +266,22 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::PRESSED)),
+            mapper.handle_key_event(&synthetic_event(Key::CapsLock, KeyState::PRESSED)),
             vec![(Key::CapsLock, KeyState::PRESSED)]
         );
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::J, KeyState::PRESSED)),
+            mapper.handle_key_event(&synthetic_event(Key::J, KeyState::PRESSED)),
             vec![
                 (Key::CapsLock, KeyState::RELEASED),
                 (Key::Down, KeyState::PRESSED)
             ]
         );
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::RELEASED)),
+            mapper.handle_key_event(&synthetic_event(Key::CapsLock, KeyState::RELEASED)),
             vec![]
         );
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::J, KeyState::RELEASED)),
+            mapper.handle_key_event(&synthetic_event(Key::J, KeyState::RELEASED)),
             vec![(Key::Down, KeyState::RELEASED)]
         );
     }
@@ -275,24 +294,54 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::J, KeyState::PRESSED)),
+            mapper.handle_key_event(&synthetic_event(Key::J, KeyState::PRESSED)),
             vec![(Key::J, KeyState::PRESSED)]
         );
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::PRESSED)),
+            mapper.handle_key_event(&synthetic_event(Key::CapsLock, KeyState::PRESSED)),
             vec![(Key::CapsLock, KeyState::PRESSED)]
         );
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::J, KeyState::RELEASED)),
+            mapper.handle_key_event(&synthetic_event(Key::J, KeyState::RELEASED)),
             vec![(Key::J, KeyState::RELEASED)]
         );
         assert_eq!(
-            mapper.handle_key_event(&mock_event(Key::CapsLock, KeyState::RELEASED)),
+            mapper.handle_key_event(&synthetic_event(Key::CapsLock, KeyState::RELEASED)),
             vec![(Key::CapsLock, KeyState::RELEASED)]
         );
     }
 
-    fn mock_event(key: Key, value: KeyState) -> KeyEvent {
-        KeyEvent::new(EventTime::new(0, 0), key, value)
+    #[test]
+    fn shorter_common_prefixes_are_mapped_correctly() {
+        let mut mapper = KeyMapper::new();
+        mapper
+            .add_mapping(&[Key::CapsLock], &Key::LeftCtrl)
+            .unwrap();
+        mapper
+            .add_mapping(&[Key::CapsLock, Key::J], &Key::Down)
+            .unwrap();
+
+        assert_eq!(
+            mapper.handle_key_event(&synthetic_event(Key::CapsLock, KeyState::PRESSED)),
+            vec![(Key::LeftCtrl, KeyState::PRESSED)]
+        );
+        assert_eq!(
+            mapper.handle_key_event(&synthetic_event(Key::J, KeyState::PRESSED)),
+            vec![
+                (Key::LeftCtrl, KeyState::RELEASED),
+                (Key::Down, KeyState::PRESSED)
+            ]
+        );
+        assert_eq!(
+            mapper.handle_key_event(&synthetic_event(Key::J, KeyState::RELEASED)),
+            vec![
+                (Key::Down, KeyState::RELEASED),
+                (Key::LeftCtrl, KeyState::PRESSED),
+            ]
+        );
+        assert_eq!(
+            mapper.handle_key_event(&synthetic_event(Key::CapsLock, KeyState::RELEASED)),
+            vec![(Key::LeftCtrl, KeyState::RELEASED),]
+        );
     }
 }
