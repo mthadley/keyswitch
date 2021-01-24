@@ -95,8 +95,6 @@ impl KeyMapper {
             final_keys.push((mapping.new, event.value));
             final_keys
         } else if let Some((_old, new)) = self.mapped_keys.remove_entry(&event.key) {
-            self.mapped_keys.remove_entry(&event.key);
-
             // First, release the mapped key.
             let mut final_keys = vec![(new, event.value)];
 
