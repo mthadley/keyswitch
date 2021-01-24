@@ -99,14 +99,16 @@ fn get_mode_from_args() -> Option<Mode> {
         .arg(
             Arg::with_name("device")
                 .short("d")
+                .long("device")
                 .number_of_values(1)
-                .long_help("The device to read events from.")
+                .long_help("The device file to read events from.")
                 .conflicts_with("device-name")
                 .required_unless("list"),
         )
         .arg(
             Arg::with_name("device-name")
                 .short("n")
+                .long("device-name")
                 .number_of_values(1)
                 .long_help("The name of the device to read events from.")
                 .conflicts_with("device")
