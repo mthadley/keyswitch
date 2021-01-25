@@ -7,7 +7,7 @@ use std::{io, path::PathBuf, process};
 
 fn main() {
     let mode = get_mode_from_args().unwrap_or_else(|| {
-        println!("Bad arguments.");
+        eprintln!("Failed to run due to bad arguments.");
         process::exit(1)
     });
 
