@@ -35,7 +35,7 @@ You can get a list of devices like this:
 
 ```sh
 $ sudo keyswitch -l
-Available decices:
+Available devices:
 
 /dev/input/event4   daskeyboard System Control
 /dev/input/event3   daskeyboard Consumer Control
