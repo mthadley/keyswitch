@@ -6,12 +6,12 @@ pkgs.rustPlatform.buildRustPackage rec {
 
   src = ./.;
 
-  cargoSha256 = "1abjffz771svi6dvywr1cfjh8aw8pqrsy5k39jsffrgl520zwkwl";
+  cargoSha256 = "0zi6whcs3ik18d0nsz0s635i7xgprwvhd4dinl4m3x471sg1b7w4";
 
   verifyCargoDeps = true;
 
-  meta = with pkgs.stdenv.lib; {
+  meta = {
     description = "Remap keys";
-    platforms = platforms.all;
+    platforms = pkgs.lib.platforms.linux;
   };
 }
