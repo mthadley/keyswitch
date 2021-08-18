@@ -8,7 +8,7 @@ I wanted to map keybinds in a way that was independant of the desktop
 environment or windowing system I was using. Specifically:
 
 * Capslock + HJKL becomes arrow keys.
-* Capslock on it's own becomes left contro.
+* Capslock on it's own becomes left control.
 
 If you've used [Karabiner-Elements](https://karabiner-elements.pqrs.org/) on
 MacOS, you may recognize these keys as something it supports out of the box.
