@@ -28,7 +28,7 @@ The keybinds themselves are hardcoded right now, and there's no way to configure
 them without editing the source code. I built this for myself, so I didn't
 bother to support bindings other than the ones I want.
 
-You'll probalmy need to run these commands using `sudo` to have sufficent
+You'll probably need to run these commands using `sudo` to have sufficent
 permissions to access the device files.
 
 You can get a list of devices like this:
